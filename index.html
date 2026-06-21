@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Glory of Iqbal</title>
+  <meta name="description" content="Download Glory of Iqbal for Android and iOS." />
+
+  <script>
+    const ANDROID_URL = "https://play.google.com/store/apps/details?id=com.muwahid.iqbal";
+
+    // Replace this after your iOS app is live on App Store
+    const IOS_URL = "https://apps.apple.com/app/idYOUR_IOS_APP_ID";
+
+    function detectPlatform() {
+      const ua = navigator.userAgent || navigator.vendor || window.opera;
+
+      const isAndroid = /android/i.test(ua);
+
+      const isIOS =
+        /iPhone|iPad|iPod/i.test(ua) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+      if (isAndroid) return "android";
+      if (isIOS) return "ios";
+
+      return "unknown";
+    }
+
+    window.onload = function () {
+      const platform = detectPlatform();
+
+      if (platform === "android") {
+        window.location.href = ANDROID_URL;
+      } else if (platform === "ios") {
+        window.location.href = IOS_URL;
+      } else {
+        document.getElementById("fallback").style.display = "block";
+      }
+    };
+  </script>
+
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f8f3ea 0%, #e8eef8 50%, #d7e3f6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #111827;
+      text-align: center;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 440px;
+      padding: 32px 24px;
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.12);
+      backdrop-filter: blur(18px);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
+
+    p {
+      margin: 0 0 24px;
+      color: #4b5563;
+      line-height: 1.5;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    a {
+      display: inline-block;
+      padding: 14px 18px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 700;
+      color: white;
+      background: #111827;
+    }
+
+    a.ios {
+      background: #2563eb;
+    }
+
+    #fallback {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="card">
+    <h1>Glory of Iqbal</h1>
+    <p>Redirecting you to the right app store...</p>
+
+    <div id="fallback">
+      <p>Choose your platform.</p>
+
+      <div class="buttons">
+        <a href="https://play.google.com/store/apps/details?id=com.muwahid.iqbal">
+          Android
+        </a>
+
+        <a class="ios" href="https://apps.apple.com/app/idYOUR_IOS_APP_ID">
+          iPhone / iPad
+        </a>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
