@@ -5,15 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>Glory of Iqbal</title>
-  <meta name="description" content="Download Glory of Iqbal for Android and iOS." />
+  <meta name="description" content="Read and share the poetry of Allama Iqbal with translations, transliteration, and explanations." />
+
+  <meta property="og:title" content="Glory of Iqbal" />
+  <meta property="og:description" content="Read Allama Iqbal with translations, transliteration, and explanations." />
+  <meta property="og:type" content="website" />
 
   <script>
-    const ANDROID_URL = "https://play.google.com/store/apps/details?id=com.muwahid.iqbal";
+    const APP_NAME = "Glory of Iqbal";
 
-    // Replace this after your iOS app is live on App Store
-    const IOS_URL = "https://apps.apple.com/app/idYOUR_IOS_APP_ID";
+    const ANDROID_PACKAGE = "com.muwahid.iqbal";
+    const ANDROID_STORE_URL =
+      `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`;
 
-    function detectPlatform() {
+    // Replace once your iOS app is live.
+    const IOS_STORE_URL = "";
+
+    // Later, when your apps support deep links, update these.
+    const ANDROID_APP_SCHEME = "gloryofiqbal://";
+    const IOS_APP_SCHEME = "gloryofiqbal://";
+
+    const REDIRECT_DELAY_MS = 900;
+
+    function getPlatform() {
       const ua = navigator.userAgent || navigator.vendor || window.opera;
 
       const isAndroid = /android/i.test(ua);
@@ -25,102 +39,455 @@
       if (isAndroid) return "android";
       if (isIOS) return "ios";
 
-      return "unknown";
+      return "desktop";
     }
 
-    window.onload = function () {
-      const platform = detectPlatform();
+    function getShareTarget() {
+      const params = new URLSearchParams(window.location.search);
+
+      const coupletId = params.get("coupletId");
+      const poemId = params.get("poemId");
+
+      if (coupletId) {
+        return {
+          type: "couplet",
+          id: coupletId,
+          label: "Opening couplet",
+          path: `couplet/${encodeURIComponent(coupletId)}`
+        };
+      }
+
+      if (poemId) {
+        return {
+          type: "poem",
+          id: poemId,
+          label: "Opening poem",
+          path: `poem/${encodeURIComponent(poemId)}`
+        };
+      }
+
+      return {
+        type: "home",
+        id: "",
+        label: "Opening app",
+        path: "home"
+      };
+    }
+
+    function buildAppDeepLink(platform, target) {
+      const scheme = platform === "ios" ? IOS_APP_SCHEME : ANDROID_APP_SCHEME;
+      return `${scheme}${target.path}`;
+    }
+
+    function buildAndroidStoreUrl(target) {
+      const referrerParams = new URLSearchParams();
+
+      referrerParams.set("utm_source", "shared_link");
+      referrerParams.set("utm_medium", "github_pages_redirect");
+
+      if (target.type === "couplet") {
+        referrerParams.set("coupletId", target.id);
+      }
+
+      if (target.type === "poem") {
+        referrerParams.set("poemId", target.id);
+      }
+
+      const storeUrl = new URL(ANDROID_STORE_URL);
+      storeUrl.searchParams.set("referrer", referrerParams.toString());
+
+      return storeUrl.toString();
+    }
+
+    function buildIOSStoreUrl(target) {
+      if (!IOS_STORE_URL) return "";
+
+      const storeUrl = new URL(IOS_STORE_URL);
+
+      storeUrl.searchParams.set("utm_source", "shared_link");
+      storeUrl.searchParams.set("utm_medium", "github_pages_redirect");
+
+      if (target.type === "couplet") {
+        storeUrl.searchParams.set("coupletId", target.id);
+      }
+
+      if (target.type === "poem") {
+        storeUrl.searchParams.set("poemId", target.id);
+      }
+
+      return storeUrl.toString();
+    }
+
+    function setText(id, value) {
+      const element = document.getElementById(id);
+      if (element) element.textContent = value;
+    }
+
+    function showFallback() {
+      document.body.classList.add("ready");
+      document.getElementById("fallback").style.display = "block";
+    }
+
+    function tryOpenAppThenStore(platform, target) {
+      const deepLink = buildAppDeepLink(platform, target);
+
+      const storeUrl =
+        platform === "android"
+          ? buildAndroidStoreUrl(target)
+          : buildIOSStoreUrl(target);
+
+      if (!storeUrl) {
+        showFallback();
+        return;
+      }
+
+      let didHide = false;
+
+      const markHidden = () => {
+        didHide = true;
+      };
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) markHidden();
+      });
+
+      window.addEventListener("pagehide", markHidden);
+
+      window.location.href = deepLink;
+
+      setTimeout(() => {
+        if (!didHide) {
+          window.location.href = storeUrl;
+        }
+      }, REDIRECT_DELAY_MS);
+    }
+
+    function boot() {
+      const platform = getPlatform();
+      const target = getShareTarget();
+
+      const androidUrl = buildAndroidStoreUrl(target);
+      const iosUrl = buildIOSStoreUrl(target);
+
+      setText("targetLabel", target.label);
+
+      if (target.type !== "home") {
+        setText("targetMeta", `${target.type}: ${target.id}`);
+      } else {
+        setText("targetMeta", "Poetry, translations, transliteration, and explanations");
+      }
+
+      const androidButton = document.getElementById("androidButton");
+      const iosButton = document.getElementById("iosButton");
+
+      androidButton.href = androidUrl;
+
+      if (iosUrl) {
+        iosButton.href = iosUrl;
+        iosButton.classList.remove("disabled");
+      } else {
+        iosButton.href = "#";
+        iosButton.classList.add("disabled");
+        iosButton.onclick = function (event) {
+          event.preventDefault();
+        };
+      }
 
       if (platform === "android") {
-        window.location.href = ANDROID_URL;
-      } else if (platform === "ios") {
-        window.location.href = IOS_URL;
-      } else {
-        document.getElementById("fallback").style.display = "block";
+        tryOpenAppThenStore("android", target);
+        return;
       }
-    };
+
+      if (platform === "ios") {
+        tryOpenAppThenStore("ios", target);
+        return;
+      }
+
+      showFallback();
+    }
+
+    window.addEventListener("DOMContentLoaded", boot);
   </script>
 
   <style>
+    :root {
+      --bg-top: #f8f1e7;
+      --bg-mid: #e9eef8;
+      --bg-bottom: #07111f;
+      --card: rgba(255, 255, 255, 0.78);
+      --card-border: rgba(255, 255, 255, 0.65);
+      --text: #101827;
+      --muted: #5f6b7a;
+      --button: #111827;
+      --button-alt: #2563eb;
+      --button-disabled: #9ca3af;
+      --glow-one: rgba(37, 99, 235, 0.22);
+      --glow-two: rgba(245, 158, 11, 0.22);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: linear-gradient(180deg, #f8f3ea 0%, #e8eef8 50%, #d7e3f6 100%);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 18%, var(--glow-two), transparent 28%),
+        radial-gradient(circle at 82% 20%, var(--glow-one), transparent 30%),
+        linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 48%, var(--bg-bottom) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
-      color: #111827;
-      text-align: center;
+      padding: 28px;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: -20%;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.34), transparent 20%),
+        radial-gradient(circle at 70% 55%, rgba(255, 255, 255, 0.18), transparent 22%);
+      filter: blur(26px);
+      animation: floatGlow 9s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+
+    @keyframes floatGlow {
+      from {
+        transform: translate3d(-18px, -12px, 0) scale(1);
+      }
+      to {
+        transform: translate3d(18px, 16px, 0) scale(1.05);
+      }
+    }
+
+    .shell {
+      position: relative;
+      width: 100%;
+      max-width: 460px;
     }
 
     .card {
-      width: 100%;
-      max-width: 440px;
-      padding: 32px 24px;
-      border-radius: 28px;
-      background: rgba(255, 255, 255, 0.78);
-      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.12);
-      backdrop-filter: blur(18px);
+      position: relative;
+      padding: 34px 26px 26px;
+      border-radius: 32px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(22px);
+      box-shadow:
+        0 28px 90px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.55);
+      text-align: center;
+      transform: translateY(8px);
+      opacity: 0;
+      animation: enter 520ms ease forwards;
+    }
+
+    @keyframes enter {
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .mark {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 18px;
+      border-radius: 22px;
+      display: grid;
+      place-items: center;
+      background:
+        linear-gradient(145deg, rgba(17, 24, 39, 0.96), rgba(37, 99, 235, 0.92));
+      color: white;
+      font-size: 28px;
+      font-weight: 800;
+      box-shadow: 0 18px 45px rgba(37, 99, 235, 0.28);
     }
 
     h1 {
-      margin: 0 0 8px;
-      font-size: 30px;
+      margin: 0;
+      font-size: 31px;
+      letter-spacing: -0.04em;
+      line-height: 1.08;
     }
 
-    p {
-      margin: 0 0 24px;
-      color: #4b5563;
-      line-height: 1.5;
+    .subtitle {
+      margin: 11px auto 0;
+      max-width: 340px;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 15.5px;
     }
 
-    .buttons {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
+    .status {
+      margin: 22px auto 0;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.58);
+      border: 1px solid rgba(255, 255, 255, 0.62);
     }
 
-    a {
-      display: inline-block;
-      padding: 14px 18px;
+    .status strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 3px;
+    }
+
+    .status span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      word-break: break-word;
+    }
+
+    .spinner {
+      width: 26px;
+      height: 26px;
+      margin: 22px auto 0;
       border-radius: 999px;
-      text-decoration: none;
-      font-weight: 700;
-      color: white;
-      background: #111827;
+      border: 3px solid rgba(17, 24, 39, 0.16);
+      border-top-color: rgba(17, 24, 39, 0.9);
+      animation: spin 850ms linear infinite;
     }
 
-    a.ios {
-      background: #2563eb;
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     #fallback {
       display: none;
+      margin-top: 22px;
+    }
+
+    body.ready .spinner {
+      display: none;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    a.button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 50px;
+      padding: 14px 18px;
+      border-radius: 999px;
+      color: white;
+      background: var(--button);
+      text-decoration: none;
+      font-weight: 750;
+      letter-spacing: -0.01em;
+      box-shadow: 0 12px 26px rgba(17, 24, 39, 0.18);
+      transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+    }
+
+    a.button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 34px rgba(17, 24, 39, 0.22);
+    }
+
+    a.button.ios {
+      background: var(--button-alt);
+    }
+
+    a.button.disabled {
+      background: var(--button-disabled);
+      cursor: not-allowed;
+      opacity: 0.72;
+      box-shadow: none;
+    }
+
+    .note {
+      margin: 16px auto 0;
+      color: rgba(95, 107, 122, 0.92);
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+
+    .footer {
+      margin-top: 18px;
+      color: rgba(255, 255, 255, 0.72);
+      text-align: center;
+      font-size: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --card: rgba(17, 24, 39, 0.72);
+        --card-border: rgba(255, 255, 255, 0.12);
+        --text: #f8fafc;
+        --muted: #cbd5e1;
+        --button: #f8fafc;
+        --button-alt: #60a5fa;
+      }
+
+      a.button {
+        color: #0f172a;
+      }
+
+      .status {
+        background: rgba(15, 23, 42, 0.42);
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+
+      .spinner {
+        border-color: rgba(255, 255, 255, 0.2);
+        border-top-color: rgba(255, 255, 255, 0.92);
+      }
     }
   </style>
 </head>
 
 <body>
-  <main class="card">
-    <h1>Glory of Iqbal</h1>
-    <p>Redirecting you to the right app store...</p>
+  <div class="shell">
+    <main class="card">
+      <div class="mark">اق</div>
 
-    <div id="fallback">
-      <p>Choose your platform.</p>
+      <h1>Glory of Iqbal</h1>
 
-      <div class="buttons">
-        <a href="https://play.google.com/store/apps/details?id=com.muwahid.iqbal">
-          Android
-        </a>
+      <p class="subtitle">
+        Read Allama Iqbal with translations, transliteration, and explanations.
+      </p>
 
-        <a class="ios" href="https://apps.apple.com/app/idYOUR_IOS_APP_ID">
-          iPhone / iPad
-        </a>
+      <div class="status">
+        <strong id="targetLabel">Opening app</strong>
+        <span id="targetMeta">Preparing your link</span>
       </div>
+
+      <div class="spinner" aria-label="Redirecting"></div>
+
+      <section id="fallback">
+        <div class="buttons">
+          <a id="androidButton" class="button" href="#">
+            Download for Android
+          </a>
+
+          <a id="iosButton" class="button ios" href="#">
+            Download for iPhone / iPad
+          </a>
+        </div>
+
+        <p class="note">
+          If the app does not open automatically, choose your platform.
+        </p>
+      </section>
+    </main>
+
+    <div class="footer">
+      Muwahid Labs
     </div>
-  </main>
+  </div>
 </body>
 </html>
