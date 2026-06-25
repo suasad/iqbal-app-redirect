@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Glory of Iqbal</title>
+  <meta name="description" content="Read Allama Iqbal with translations, transliteration, explanations, and beautiful shareable couplets." />
+
+  <meta property="og:title" content="Glory of Iqbal" />
+  <meta property="og:description" content="Read Allama Iqbal with translations, transliteration, and explanations." />
+  <meta property="og:type" content="website" />
+
+  <script>
+    const APP_NAME = "Glory of Iqbal";
+    const DEVELOPER_NAME = "Muwahid Labs";
+    const DEVELOPER_EMAIL = "muwahidlabs@gmail.com";
+    const PRIVACY_PATH = "/privacy/glory-of-iqbal";
+
+    const ANDROID_PACKAGE = "com.muwahid.iqbal";
+    const ANDROID_STORE_URL =
+      `https://play.google.com/apps/testing/com.muwahid.iqbal/5`;
+
+    // Replace this when iOS app is live.
+    const IOS_STORE_URL = "";
+
+    const APP_SCHEME = "gloryofiqbal://";
+    const REDIRECT_DELAY_MS = 900;
+
+
+    function isPrivacyPage() {
+      const path = window.location.pathname.replace(/\/+$/, "");
+      return path === PRIVACY_PATH || path === "/privacy";
+    }
+
+    function showPrivacyPage() {
+      document.title = `${APP_NAME} Privacy Policy`;
+
+      const redirectPage = document.getElementById("redirectPage");
+      const privacyPage = document.getElementById("privacyPage");
+
+      if (redirectPage) redirectPage.style.display = "none";
+      if (privacyPage) privacyPage.style.display = "block";
+
+      document.body.classList.add("ready", "privacy-mode");
+    }
+
+    function getPlatform() {
+      const ua = navigator.userAgent || navigator.vendor || window.opera;
+
+      const isAndroid = /android/i.test(ua);
+      const isIOS =
+        /iPhone|iPad|iPod/i.test(ua) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+      if (isAndroid) return "android";
+      if (isIOS) return "ios";
+      return "desktop";
+    }
+
+    function getTarget() {
+      const params = new URLSearchParams(window.location.search);
+      const coupletId = params.get("coupletId");
+      const poemId = params.get("poemId");
+
+      if (coupletId) {
+        return {
+          type: "couplet",
+          id: coupletId,
+          label: "Opening shared couplet",
+          path: `couplet/${encodeURIComponent(coupletId)}`
+        };
+      }
+
+      if (poemId) {
+        return {
+          type: "poem",
+          id: poemId,
+          label: "Opening shared poem",
+          path: `poem/${encodeURIComponent(poemId)}`
+        };
+      }
+
+      return {
+        type: "home",
+        id: "",
+        label: "Opening Glory of Iqbal",
+        path: "home"
+      };
+    }
+
+    function buildDeepLink(target) {
+      return `${APP_SCHEME}${target.path}`;
+    }
+
+    function buildAndroidStoreUrl(target) {
+      const referrer = new URLSearchParams();
+
+      referrer.set("utm_source", "shared_link");
+      referrer.set("utm_medium", "web_redirect");
+
+      if (target.type === "couplet") {
+        referrer.set("coupletId", target.id);
+      }
+
+      if (target.type === "poem") {
+        referrer.set("poemId", target.id);
+      }
+
+      const url = new URL(ANDROID_STORE_URL);
+      url.searchParams.set("referrer", referrer.toString());
+
+      return url.toString();
+    }
+
+    function buildIOSStoreUrl(target) {
+      if (!IOS_STORE_URL) return "";
+
+      const url = new URL(IOS_STORE_URL);
+
+      url.searchParams.set("utm_source", "shared_link");
+      url.searchParams.set("utm_medium", "web_redirect");
+
+      if (target.type === "couplet") {
+        url.searchParams.set("coupletId", target.id);
+      }
+
+      if (target.type === "poem") {
+        url.searchParams.set("poemId", target.id);
+      }
+
+      return url.toString();
+    }
+
+    function setText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    function showFallback() {
+      document.body.classList.add("ready");
+      document.getElementById("fallback").style.display = "block";
+    }
+
+    function tryOpenAppThenStore(platform, target) {
+      const deepLink = buildDeepLink(target);
+      const storeUrl =
+        platform === "android"
+          ? buildAndroidStoreUrl(target)
+          : buildIOSStoreUrl(target);
+
+      if (!storeUrl) {
+        showFallback();
+        return;
+      }
+
+      let pageHidden = false;
+
+      function markHidden() {
+        pageHidden = true;
+      }
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) markHidden();
+      });
+
+      window.addEventListener("pagehide", markHidden);
+
+      window.location.href = deepLink;
+
+      setTimeout(() => {
+        if (!pageHidden) {
+          window.location.href = storeUrl;
+        }
+      }, REDIRECT_DELAY_MS);
+    }
+
+    function boot() {
+      const platform = getPlatform();
+      const target = getTarget();
+
+      const androidUrl = buildAndroidStoreUrl(target);
+      const iosUrl = buildIOSStoreUrl(target);
+
+      setText("targetLabel", target.label);
+
+      if (target.type === "home") {
+        setText("targetMeta", "Poetry, translations, transliteration, audio, and explanations");
+      } else {
+        setText("targetMeta", `${target.type}: ${target.id}`);
+      }
+
+      const androidButton = document.getElementById("androidButton");
+      const iosButton = document.getElementById("iosButton");
+
+      androidButton.href = androidUrl;
+
+      if (iosUrl) {
+        iosButton.href = iosUrl;
+        iosButton.classList.remove("disabled");
+      } else {
+        iosButton.href = "#";
+        iosButton.classList.add("disabled");
+        iosButton.onclick = function (event) {
+          event.preventDefault();
+        };
+      }
+
+      if (platform === "android") {
+        tryOpenAppThenStore("android", target);
+        return;
+      }
+
+      if (platform === "ios") {
+        tryOpenAppThenStore("ios", target);
+        return;
+      }
+
+      showFallback();
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      if (isPrivacyPage()) {
+        showPrivacyPage();
+        return;
+      }
+
+      boot();
+    });
+  </script>
+
+  <style>
+    :root {
+      --ink: #111827;
+      --muted: #637083;
+      --cream: #f8efe1;
+      --gold: #d6a955;
+      --blue: #1e3a8a;
+      --deep: #050b18;
+      --card: rgba(255, 255, 255, 0.72);
+      --border: rgba(255, 255, 255, 0.58);
+      --shadow: rgba(2, 6, 23, 0.24);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      background: var(--deep);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      color: var(--ink);
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 12% 18%, rgba(214, 169, 85, 0.42), transparent 28%),
+        radial-gradient(circle at 88% 14%, rgba(59, 130, 246, 0.38), transparent 31%),
+        radial-gradient(circle at 50% 88%, rgba(8, 47, 73, 0.94), transparent 42%),
+        linear-gradient(180deg, #fff7e8 0%, #e8eef9 43%, #07111f 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: -20%;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 25% 30%, rgba(255, 255, 255, 0.42), transparent 18%),
+        radial-gradient(circle at 70% 42%, rgba(255, 255, 255, 0.2), transparent 20%),
+        radial-gradient(circle at 42% 75%, rgba(214, 169, 85, 0.18), transparent 19%);
+      filter: blur(28px);
+      animation: glowMove 10s ease-in-out infinite alternate;
+    }
+
+    body::after {
+      content: "خودی  عشق  عمل  اقبال  معنی  آزادی";
+      position: fixed;
+      inset-inline: 0;
+      bottom: 5%;
+      pointer-events: none;
+      text-align: center;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(36px, 10vw, 132px);
+      letter-spacing: 0.08em;
+      color: rgba(255, 255, 255, 0.055);
+      white-space: nowrap;
+      transform: rotate(-3deg);
+    }
+
+    @keyframes glowMove {
+      from {
+        transform: translate3d(-24px, -16px, 0) scale(1);
+      }
+      to {
+        transform: translate3d(22px, 20px, 0) scale(1.06);
+      }
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+    }
+
+    .hero {
+      width: min(1080px, 100%);
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 34px;
+      align-items: center;
+    }
+
+    .content {
+      padding: 8px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.54);
+      border: 1px solid rgba(255, 255, 255, 0.62);
+      backdrop-filter: blur(18px);
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--gold);
+      box-shadow: 0 0 18px rgba(214, 169, 85, 0.95);
+    }
+
+    h1 {
+      max-width: 580px;
+      margin: 20px 0 0;
+      font-size: clamp(48px, 8vw, 82px);
+      line-height: 0.96;
+      letter-spacing: -0.07em;
+      color: #0f172a;
+    }
+
+    .gradient-text {
+      background: linear-gradient(110deg, #111827 0%, #1e3a8a 48%, #b7791f 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .subtitle {
+      max-width: 520px;
+      margin: 22px 0 0;
+      color: #475569;
+      font-size: clamp(16px, 2vw, 19px);
+      line-height: 1.65;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 26px;
+    }
+
+    .chip {
+      padding: 9px 12px;
+      border-radius: 999px;
+      color: #334155;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.56);
+      backdrop-filter: blur(16px);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .panel {
+      position: relative;
+      border-radius: 36px;
+      padding: 22px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(24px);
+      box-shadow:
+        0 34px 110px var(--shadow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.72);
+      overflow: hidden;
+      transform: translateY(10px);
+      opacity: 0;
+      animation: enter 620ms ease forwards;
+    }
+
+    @keyframes enter {
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.58), transparent 36%),
+        radial-gradient(circle at top right, rgba(214, 169, 85, 0.24), transparent 32%);
+      pointer-events: none;
+    }
+
+    .phone {
+      position: relative;
+      margin: 0 auto;
+      max-width: 330px;
+      min-height: 560px;
+      border-radius: 42px;
+      padding: 16px;
+      background:
+        linear-gradient(160deg, rgba(15, 23, 42, 0.94), rgba(30, 58, 138, 0.94));
+      box-shadow:
+        0 28px 70px rgba(15, 23, 42, 0.34),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+    }
+
+    .screen {
+      min-height: 528px;
+      border-radius: 31px;
+      padding: 22px;
+      background:
+        radial-gradient(circle at 15% 12%, rgba(214, 169, 85, 0.32), transparent 32%),
+        radial-gradient(circle at 86% 18%, rgba(96, 165, 250, 0.28), transparent 30%),
+        linear-gradient(180deg, #f9f2e7 0%, #eef4ff 50%, #0b1220 100%);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .screen::after {
+      content: "";
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      right: -60px;
+      bottom: -50px;
+      border-radius: 50%;
+      background: rgba(214, 169, 85, 0.24);
+      filter: blur(12px);
+    }
+
+    .app-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 900;
+      font-size: 22px;
+      background: linear-gradient(145deg, #111827, #2563eb);
+      box-shadow: 0 14px 32px rgba(37, 99, 235, 0.3);
+    }
+
+    .pill {
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.62);
+      color: #334155;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .poem-card {
+      position: relative;
+      z-index: 1;
+      margin-top: 54px;
+      padding: 24px 20px;
+      border-radius: 26px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.68);
+      box-shadow: 0 24px 58px rgba(15, 23, 42, 0.15);
+    }
+
+    .urdu {
+      direction: rtl;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 30px;
+      line-height: 1.9;
+      color: #111827;
+    }
+
+    .meaning {
+      margin-top: 18px;
+      color: #475569;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .status {
+      position: relative;
+      z-index: 1;
+      margin-top: 22px;
+      padding: 14px 16px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+    }
+
+    .status strong {
+      display: block;
+      font-size: 14px;
+      color: #111827;
+    }
+
+    .status span {
+      display: block;
+      margin-top: 3px;
+      font-size: 13px;
+      color: #64748b;
+      word-break: break-word;
+    }
+
+    .spinner {
+      position: relative;
+      z-index: 1;
+      width: 28px;
+      height: 28px;
+      margin: 22px auto 0;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.34);
+      border-top-color: #f8fafc;
+      animation: spin 850ms linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    #fallback {
+      display: none;
+      position: relative;
+      z-index: 1;
+      margin-top: 22px;
+    }
+
+    body.ready .spinner {
+      display: none;
+    }
+
+    .buttons {
+      display: grid;
+      gap: 12px;
+    }
+
+    .button {
+      min-height: 52px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 18px;
+      text-decoration: none;
+      font-weight: 850;
+      letter-spacing: -0.01em;
+      color: white;
+      background: linear-gradient(135deg, #111827, #1e3a8a);
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.24);
+      transition: transform 170ms ease, box-shadow 170ms ease, opacity 170ms ease;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 20px 46px rgba(15, 23, 42, 0.3);
+    }
+
+    .button.ios {
+      background: linear-gradient(135deg, #2563eb, #60a5fa);
+    }
+
+    .button.disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      box-shadow: none;
+      filter: grayscale(0.6);
+    }
+
+    .note {
+      margin: 14px auto 0;
+      color: rgba(226, 232, 240, 0.82);
+      text-align: center;
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+
+    .footer {
+      margin-top: 18px;
+      text-align: center;
+      color: rgba(226, 232, 240, 0.74);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+
+
+    .privacy-mode {
+      color: var(--ink);
+    }
+
+    .privacy-page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      padding: 28px;
+      display: none;
+    }
+
+    .privacy-shell {
+      width: min(920px, 100%);
+      margin: 0 auto;
+      padding: 36px 0 52px;
+    }
+
+    .privacy-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+      color: #0f172a;
+    }
+
+    .privacy-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+    }
+
+    .privacy-logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 900;
+      background: linear-gradient(145deg, #111827, #2563eb);
+      box-shadow: 0 12px 28px rgba(37, 99, 235, 0.25);
+    }
+
+    .privacy-link,
+    .footer-link {
+      color: inherit;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .privacy-link:hover,
+    .footer-link:hover {
+      text-decoration: underline;
+    }
+
+    .privacy-card {
+      border-radius: 34px;
+      padding: clamp(24px, 5vw, 52px);
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.68);
+      backdrop-filter: blur(24px);
+      box-shadow:
+        0 34px 110px rgba(2, 6, 23, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    }
+
+    .privacy-card h1 {
+      margin: 0;
+      max-width: none;
+      font-size: clamp(38px, 6vw, 64px);
+      line-height: 1.02;
+      letter-spacing: -0.055em;
+    }
+
+    .privacy-updated {
+      margin-top: 12px;
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .privacy-card h2 {
+      margin: 34px 0 10px;
+      color: #0f172a;
+      font-size: 22px;
+      letter-spacing: -0.02em;
+    }
+
+    .privacy-card p,
+    .privacy-card li {
+      color: #334155;
+      font-size: 16px;
+      line-height: 1.75;
+    }
+
+    .privacy-card ul {
+      padding-left: 22px;
+      margin: 10px 0 0;
+    }
+
+    .privacy-card a {
+      color: #1e3a8a;
+      font-weight: 800;
+    }
+
+    .privacy-footer {
+      margin-top: 24px;
+      color: rgba(226, 232, 240, 0.78);
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .footer-links {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .footer-link {
+      color: rgba(226, 232, 240, 0.9);
+    }
+
+    @media (max-width: 860px) {
+      .hero {
+        grid-template-columns: 1fr;
+        gap: 26px;
+      }
+
+      .content {
+        text-align: center;
+      }
+
+      .eyebrow {
+        margin-inline: auto;
+      }
+
+      h1,
+      .subtitle {
+        margin-inline: auto;
+      }
+
+      .chips {
+        justify-content: center;
+      }
+
+      .phone {
+        min-height: auto;
+      }
+
+      .screen {
+        min-height: 480px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .page {
+        padding: 18px;
+      }
+
+      h1 {
+        font-size: 46px;
+      }
+
+      .subtitle {
+        font-size: 16px;
+      }
+
+      .panel {
+        padding: 14px;
+        border-radius: 30px;
+      }
+
+      .phone {
+        border-radius: 34px;
+        padding: 12px;
+      }
+
+      .screen {
+        min-height: 460px;
+        border-radius: 26px;
+        padding: 18px;
+      }
+
+      .urdu {
+        font-size: 26px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main id="redirectPage" class="page">
+    <section class="hero">
+      <div class="content">
+        <div class="eyebrow">
+          <span class="dot"></span>
+          Poetry made readable
+        </div>
+
+        <h1>
+          Discover <span class="gradient-text">Iqbal</span><br />
+          beautifully.
+        </h1>
+
+        <p class="subtitle">
+          Read Allama Iqbal with translations, transliteration, audio, and explanations.
+          Share couplets and poems with one clean link.
+        </p>
+
+        <div class="chips">
+          <span class="chip">Urdu</span>
+          <span class="chip">Persian</span>
+          <span class="chip">English</span>
+          <span class="chip">Audio</span>
+          <span class="chip">Shareable cards</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="phone">
+            <div class="screen">
+              <div class="app-top">
+                <div class="logo">اق</div>
+                <div class="pill">Glory of Iqbal</div>
+              </div>
+
+              <div class="poem-card">
+                <div class="urdu">
+                  خودی<br />
+                  عشق<br />
+                  عمل
+                </div>
+
+                <div class="meaning">
+                  Explore poetry through meaning, context, transliteration, and elegant reading cards.
+                </div>
+              </div>
+
+              <div class="status">
+                <strong id="targetLabel">Opening Glory of Iqbal</strong>
+                <span id="targetMeta">Preparing your link</span>
+              </div>
+
+              <div class="spinner" aria-label="Redirecting"></div>
+
+              <section id="fallback">
+                <div class="buttons">
+                  <a id="androidButton" class="button" href="#">
+                    Download for Android
+                  </a>
+
+                  <a id="iosButton" class="button ios" href="#">
+                    Download for iPhone / iPad
+                  </a>
+                </div>
+
+                <p class="note">
+                  If the app does not open automatically, choose your platform.
+                </p>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <span class="footer-links">
+            <span>Muwahid Labs</span>
+            <span>•</span>
+            <a class="footer-link" href="/privacy/glory-of-iqbal">Privacy Policy</a>
+          </span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+
+  <main id="privacyPage" class="privacy-page" aria-labelledby="privacyTitle">
+    <div class="privacy-shell">
+      <nav class="privacy-nav" aria-label="Privacy navigation">
+        <a class="privacy-brand" href="/">
+          <span class="privacy-logo">اق</span>
+          <span>Glory of Iqbal</span>
+        </a>
+        <a class="privacy-link" href="/">Home</a>
+      </nav>
+
+      <article class="privacy-card">
+        <h1 id="privacyTitle"><span class="gradient-text">Privacy Policy</span></h1>
+        <p class="privacy-updated">Effective date: 25 June 2026</p>
+
+        <p>
+          This Privacy Policy applies to the mobile application <strong>Glory of Iqbal</strong>,
+          published by <strong>Muwahid Labs</strong>.
+        </p>
+
+        <p>
+          Glory of Iqbal is an educational and literary application that provides poetry,
+          translations, transliteration, search, favourites, sharing, audio, and reading-related features.
+        </p>
+
+        <h2>Developer information</h2>
+        <p>
+          Developer: Muwahid Labs<br />
+          Contact: <a href="mailto:muwahidlabs@gmail.com">muwahidlabs@gmail.com</a>
+        </p>
+
+        <h2>Information we collect</h2>
+        <p>Glory of Iqbal is designed to work primarily on your device. Depending on the features you use, the app may access or store the following information:</p>
+        <ul>
+          <li><strong>App preferences:</strong> selected language, theme, font size, reading preferences, onboarding status, and similar settings.</li>
+          <li><strong>Favourites and reading data:</strong> poems or couplets you mark as favourites and related reading preferences.</li>
+          <li><strong>Google account information:</strong> if Google Sign-In or Google Drive backup/sync is enabled, the app may use your Google account only to authenticate you and backup or restore app data.</li>
+          <li><strong>Device and app data:</strong> basic device, app, crash, diagnostic, security, or compatibility information required for normal operation and troubleshooting.</li>
+        </ul>
+
+        <h2>How we use information</h2>
+        <p>We use information only to provide app functionality, save preferences, store and restore favourites, enable backup and sync where available, improve reliability, fix technical issues, and maintain app security and compatibility.</p>
+        <p>We do not sell your personal information.</p>
+
+        <h2>Data sharing</h2>
+        <p>We do not share your personal data with third parties except where necessary to provide app functionality or where required by law.</p>
+        <p>If Google Sign-In or Google Drive backup/sync is used, relevant data may be processed by Google according to Google’s own privacy policies and account controls.</p>
+        <p>If the app includes Google Play services, Google Play Billing, crash reporting, analytics, ads, or similar services in the future, those services may process data according to their own policies. Any such usage should also be reflected in the Google Play Data Safety section.</p>
+
+        <h2>Google Drive backup and sync</h2>
+        <p>If backup and sync is enabled, the app may store app-related data such as favourites and settings in your Google Drive App Data folder. This data is used only to restore your app experience across devices. The app does not access your general Google Drive files.</p>
+
+        <h2>Data retention and deletion</h2>
+        <p>Locally stored app data remains on your device unless you delete it, reset the app, or uninstall the app.</p>
+        <p>If backup or sync is used, backup data may remain in your Google account until you delete it from your Google account, disable sync, or request deletion where applicable.</p>
+        <p>You may contact us at <a href="mailto:muwahidlabs@gmail.com">muwahidlabs@gmail.com</a> for privacy-related deletion requests.</p>
+
+        <h2>Security</h2>
+        <p>We use reasonable technical measures to protect user data. However, no method of electronic storage or transmission is completely secure, because the internet was apparently assembled by hopeful mammals.</p>
+
+        <h2>Children’s privacy</h2>
+        <p>Glory of Iqbal is intended for a general audience. We do not knowingly collect personal information from children. If you believe a child has provided personal information through the app, contact us so we can take appropriate action.</p>
+
+        <h2>Changes to this Privacy Policy</h2>
+        <p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated effective date.</p>
+
+        <h2>Contact</h2>
+        <p>
+          Muwahid Labs<br />
+          Email: <a href="mailto:muwahidlabs@gmail.com">muwahidlabs@gmail.com</a>
+        </p>
+      </article>
+
+      <div class="privacy-footer">Muwahid Labs</div>
+    </div>
+  </main>
+</body>
+</html>
